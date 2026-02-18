@@ -6,18 +6,20 @@ import streamlit as st
 import pandas as pd
 from sklearn.datasets import load_iris
 import altair as alt
+from openai import OpenAI
 
 #Open file with API key
-
+with open("openai_key.txt") as f:
+     my_api_key=f.read().strip()
 
 #Initialize OpenAI client with your API key
-
+client=OpenAI(api_key=my_api_key)
 
 #Configure page
 st.set_page_config(page_title="Iris Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Connect to OpenAI Chat API")
 
 #Load Iris dataset
 iris = load_iris()
@@ -44,21 +46,33 @@ user_input = st.sidebar.text_input("Type a message...", key="ui_input")
 #Check if send button is clicked
 if st.sidebar.button("Send", key="ui_send"):
     #Provide warning if user has not entered any input
+    if not user_input.strip():
+        st.warning("Please enter a message before sending.")
 
     #Add chat history in session state is the user has entered input
+    else:
 
         #Add user's message to chat history
         st.session_state.chat_history.append(f"You: {user_input}")
+        try:
 
             #Send chat history to OpenAI LLM and receive response
+            response=client.chat.completions.create(
 
                 #Select model
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": user_input}]
+            ) 
 
             #Gather assistant's response
+            reply=response.choices[0].message.content
 
             #Add AI assistant's reply to chat history
+            st.session_state.chat_history.append(f"Bot: {reply}")
+        except Exception as e:
 
             #Handle API errors and add to chat history
+            st.session_state.chat_history.append(f"Bot: Error - {e}")
 
 
 st.subheader("Chat Window")
