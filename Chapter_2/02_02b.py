@@ -11,7 +11,7 @@ import altair as alt
 st.set_page_config(page_title="Iris Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Add Chat Widget")
 
 #Load Iris dataset
 iris = load_iris()
@@ -28,20 +28,25 @@ x_axis = st.sidebar.selectbox("X-axis feature:", options=iris.feature_names, ind
 y_axis = st.sidebar.selectbox("Y-axis feature:", options=iris.feature_names, index=1)
 
 #Add chat widget in sidebar
+st.sidebar.header("Chat Widget")
 
 #Determine if chat history exists in the session state and initialize if it doesn't
-
+if "chat_history" not in st.session_state:
+  st.session_state.chat_history=[]
 
 #Create text input field in sidebar to allow users to type in message
+user_input=st.sidebar.text_input("Type a message...", key="ui_input")
 
 #Check if send button is clicked
+if st.sidebar.button("Send", key="ui_send"):
+  #Add chat history in session state is the user has entered input
+  if user_input:
+    st.session_state.chat_history.append(f"You: {user_input}")
 
-    #Add chat history in session state is the user has entered input
-
-
-
+st.subheader("Chat Window")
 #Loop through the chat history stored in session state and display each message
-
+for message in st.session_state.chat_history:
+  st.write(message)
     
 #Filter DataFrame
 filtered_df = df[df["species"].isin(species_options)]
