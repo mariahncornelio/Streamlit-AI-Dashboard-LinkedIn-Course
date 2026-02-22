@@ -19,7 +19,7 @@ client = OpenAI(api_key=my_api_key)
 st.set_page_config(page_title="Iris Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Error Handling")
 
 #Load Iris dataset
 iris = load_iris()
@@ -73,12 +73,13 @@ if st.button('Send', key='ui_send'):
             #Add AI assistant's reply to chat history
             st.session_state.chat_history.append({'role':'assistant','content':reply})
 
-        except Exception as :
+        except Exception as api_err:
             #Display API Error
+            st.error(f"OpenAI API error: {api_err}")
 
             #Add API error to chat history
-            st.session_state.chat_history.append()
-
+            st.session_state.chat_history.append({"role": "assitant", "content":f"API error: {api_err}"})
+            reply=None
         
         if reply:
             #Check if the assistant's reply starts with Python code block marker (```python)
@@ -107,26 +108,36 @@ if st.button('Send', key='ui_send'):
                     st.write(result)
 
                     #Add success message to chat history
+                    st.session_state.chat_history.append({"role": "assistant", "content": "Code executed successfully!"})
 
-                except Exception as :
+                except Exception as exec_err:
                     #Display error message if an error occurs during code execution
-                    st.error(f"Error executing code: {}")
+                    st.error(f"Error executing code: {exec_err}")
                     #Add code execution error to chat history
+                    st.session_state.chat_history.append({"role": "assistant", "content":f"Execution error: {exec_err}"})
             else:
                 #Display result
                 st.subheader('Answer')
                 st.write(reply)
                 #Add success message to chat history
+                st.session_state.chat_history.append({"role": "assistant", "content": "Answer delivered without code"})
 
-st.subheader('Chat Window')
+st.subheader('Feedback History')
 #Loop through the chat history stored in session state and display each message
 for message in st.session_state.chat_history:
-    
+    role=message.get("role", "")
+    content=message.get("content", "")
     #Check if message is from assistant and display as info box
+    if role == "assistant":
+        st.info(f"**Bot:** {content}")
 
     #Check if message is from user and display as info box
+    elif role == "user":
+        st.info(f"**You:** {content}")
 
     #Otherwise display message as regular text
+    else:
+        st.write(content)
 
 
 #Filter DataFrame

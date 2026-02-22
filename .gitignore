@@ -3,3 +3,4 @@ node_modules
 .tmp
 npm-debug.log
 **/openai_key.txt
+Chapter_3/openai_key.txt

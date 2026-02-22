@@ -19,7 +19,7 @@ client = OpenAI(api_key=my_api_key)
 st.set_page_config(page_title="Iris Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Run AI-Generated Code")
 
 #Load Iris dataset
 iris = load_iris()
@@ -35,15 +35,17 @@ x_axis = st.sidebar.selectbox("X-axis feature:", options=iris.feature_names, ind
 #Allow users to change y-axis
 y_axis = st.sidebar.selectbox("Y-axis feature:", options=iris.feature_names, index=1)
 
-#Add chat widget on main page
+#Add chat widget on main page instead of the side bar
+st.subheader("Ask a question about the Iris dataset")
 
 #Determine if chat history exists in the session state and initialize if it doesn't
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 #Create text input field to allow users to type in message
-
+user_input=st.text_input("Type your question here...", key="ui_input")
 #Check if send button is clicked
+if st.button("Send", key="ui_send"):
 
     #Provide warning if user has not entered any input
     if not user_input.strip():
@@ -51,49 +53,73 @@ if "chat_history" not in st.session_state:
     #Add chat history in session state is the user has entered input
     else:
         #Add user's message to chat history
-        st.session_state.chat_history.append(f"You: {user_input}")
+        # st.session_state.chat_history.append(f"You: {user_input}")
+        st.session_state.chat_history.append({"role": "user", "content":user_input})
         #Build system prompt
+        msgs=[
+            {"role": "system", "content":
+             "You are an expert on the Iris dataset and Python. "
+             "If code is needed, reply only with a complete ```python``` block. "
+             "The DataFrame is available as `df`. "
+             "Columns are: `sepal length (cm)`, `sepal width (cm)`, `petal length (cm)`, `petal width (cm)`, and `species`. "
+             "End code with an expression that evaluates to a result, no print or return statements."}
+        ] + st.session_state.chat_history
 
         try:
             #Send chat history to OpenAI LLM and receive response
             response = client.chat.completions.create(
                 #Select model
                 model="gpt-3.5-turbo",
-                messages=
+                messages=msgs
             )
             #Gather assistant's response
             reply = response.choices[0].message.content
             #Add AI assistant's reply to chat history
-            st.session_state.chat_history.append()
+            st.session_state.chat_history.append({"role": "assistant", "content":reply})
 
         except Exception as e:
             #Handle API errors and add to chat history
             st.session_state.chat_history.append(f"Bot: Error - {e}")
 
+        if reply:
             #Check if the assistant's reply starts with Python code block marker (```python)
+            if reply.strip().startswith("```python"):
 
                 #Extract the code content between the ```python and ``` markers
+                code=reply.strip().split("```python")[-1].split("```")[0]
+                st.subheader("Generated Python Code")
 
                 #Display the extracted code in a code block with Python syntax highlighting
+                st.code(code, language="python")
 
 
-                #Prepare namespace
+                #Prepare namespace inside streamlit application
+                ns={'pd': pd, 'df': df, 'iris':iris, 'st':st}
 
-
+                try:
                     #Split the generated code into individual lines and remove any empty lines
+                    lines=[l for l in code.splitlines() if l.strip()] # Gets rid of empty lines
 
                     #Separate all lines except the last into 'body', and last line into 'last'
+                    *body, last=lines
 
                     #Run the 'body' portion of the generated code in the namespace
+                    exec("\n".join(body), ns)
                  
                     #Evaluate the last line in the same namespace to capture any returned value
+                    result=eval(last, ns)
+                    st.subheader("Execution Result")
            
-
                     #Display code result
-
+                    st.write(result)
+                except Exception as e:
                     #Display error message if an error occurs during code execution
+                    st.error(f"Error executing code: {e}")
+            else:
     
-                #Display result
+                #Display result - if there is no python code it returns it as is
+                st.subheader("Answer")
+                st.write(reply)
 
 
 st.subheader("Chat Window")
