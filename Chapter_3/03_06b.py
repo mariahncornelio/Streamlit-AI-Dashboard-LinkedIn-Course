@@ -16,7 +16,7 @@ with open("openai_key.txt") as f:
 client = OpenAI(api_key=my_api_key)
 
 #Write title
-st.title("")
+st.title("Identify KPI Metrics")
 
 #Check if cleaned dataset exists, stop app if not found
 if not os.path.exists("cleaned_data_final.pkl"):
@@ -55,26 +55,32 @@ column_summary_md = "\n".join(column_summaries)
 
 #Create text input area for user to request KPI suggestions or targeted metric questions
 user_prompt = st.text_area(
-    "",
+    "Ask for KPI suggestion (or targeted metric questions like 'Which expense metrics should I focus on?')",
     height=200
 )
 
 #Check if 'Generate KPI Suggestions' button is clicked
-if st.button(""):
+if st.button("Generate KPI Suggestions"):
     #Provide warning if user has not entered a request
     if not user_prompt.strip():
         st.warning("Please enter a request above.")
     else:
         #Display spinner while querying AI
-        with st.spinner(""):
+        with st.spinner("AI is analyzing your data for KPI ideas..."):
             try:
                 #Construct system prompt to explain available columns and instructions for AI
                 system_prompt = (
                     f"You are a data-savvy Python analyst. The pandas DataFrame `df` has the following columns:\n\n"
                     f"{column_summary_md}\n\n"
-                    "When asked, return a Markdown-formatted, numbered list of 4–6 "
-
-                    "If the user asks a targeted question, tailor your recommendations accordingly. "
+                    "When asked, return a Markdown-formatted, numbered list of 4–6 KPI metrics"
+                    "or insights to visualize. "
+                    "For each KPI, provide: \n"
+                    "- A clear title\n"
+                    "- Which column(s) to use\n"
+                    "- A suggested chart type\n"
+                    "- A brief rationale\n\n"
+                    "If the user asks a targeted question, (e.g. 'Which expense metrics should I focus on?')"
+                    " tailor your recommendations accordingly. "
                     "Do NOT return any code, only a clean, well-formatted Markdown list."
                 )
 
@@ -91,11 +97,11 @@ if st.button(""):
                 )
 
                 #Extract assistant's reply
-                suggestions = resp.choices[0].message.content
-                st.subheader("")
+                kpi_suggestions = resp.choices[0].message.content
+                st.subheader("AI-Recommended KPI Metrics & Charts")
                 #Display assistant's suggestions as markdown
-                st.markdown(suggestions)
+                st.markdown(kpi_suggestions)
 
             #Handle API errors and display message if request fails
             except Exception as e:
-                st.error(f"Error generating suggestions: {e}")
+                st.error(f"Error generating KPI suggestions: {e}")
