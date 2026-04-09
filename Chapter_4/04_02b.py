@@ -23,7 +23,7 @@ client = OpenAI(api_key=my_api_key)
 st.set_page_config(page_title="Hotel Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Refine Visualizations withi AI")
 
 #Create directory to store chart files if it doesn't already exist
 CHART_DIR = "charts"
@@ -44,34 +44,38 @@ st.subheader("Cleaned Data Preview")
 st.dataframe(df.head())
 
 #Check for existing saved chart files
-
+chart_files=[f for f in sorted(os.listdir(CHART_DIR)) if f.endswith(".py")]
+if not chart_files:
+    st.error("No saved charts found. Please generate a chart first from the previous lesson.")
+    st.stop()
 
 #Create selectbox for user to choose a saved chart to refine
-
+chart_name = st.selectbox("Choose a saved chart to refine:", chart_files)
 
 #Load selected chart code from file
-
+with open(os.path.join(CHART_DIR, chart_name), encoding="utf-8") as f:
+    chart_code = f.read()
 
 #Attempt to safely execute the selected chart code
 local_vars = {"df": df, "alt": alt}
-exec(, {}, local_vars)
+exec(chart_code, {}, local_vars)
 chart = local_vars["chart"]
 
-
+st.subheader(f"Current: {chart_name}")
 #Display the selected chart
 st.altair_chart(chart, use_container_width=True)
 
 #Create text input area for user to describe how to refine the selected chart
 user_prompt = st.text_area(
-    "", 
+    "Describe how to refine this chart (e.g. 'add title, change bar color to orange, etc.')", 
     height=80
 )
 
 #Check if 'Refine & Save' button is clicked
-if st.button(""):
+if st.button("Refine & Save"):
     #Provide warning if user has not entered a refinement instruction
     if not user_prompt.strip():
-        st.warning("")
+        st.warning("Please enter a refinement instruction.")
     else:
         #Display spinner while querying AI
         with st.spinner("Generating code…"):
@@ -83,7 +87,9 @@ if st.button(""):
                     messages=[
                         #Provide system instructions
                         {"role": "system", "content": (
-                            "You are an Altair expert."
+                            "You are an Altair expert. Given an existing Altair 'chart', "
+                            "return only a Python code block that modifies 'chart' "
+                            "according to the user's instructions, reassigning to 'chart'."
 
                         )},
                         #Send user's refinement instruction
@@ -99,38 +105,38 @@ if st.button(""):
                 )
 
                 #Fix known Altair code issues if present
-                ai_code = 
+                ai_code = code_lines.replace("configure_title(text=", "properties(title=")
 
             #Handle errors if code generation request fails
             except Exception as e:
-                st.error(f" {e}")
+                st.error(f"Failed to generate refinement code: {e}")
 
         st.subheader("AI‑Generated Code")
         #Display AI-generated refinement code
         st.code(ai_code, language="python")
 
         #Combine original chart code and AI-generated refinement code
-        
+        refined_code=chart_code + "\n" + ai_code   
 
         #Attempt to save combined refined code back to original file
         out_path = os.path.join(CHART_DIR, chart_name)
         try:
             with open(out_path, "w", encoding="utf-8") as f:
-                f.write()
-            st.success(f"")
+                f.write(refined_code)
+            st.success(f"Chart {chart_name} refined and saved.")
         except Exception as e:
-            st.error(f" {e}")
+            st.error(f"Failed to save refined chart: {e}")
 
         #Attempt to safely execute the combined refined chart code
         local_vars = {"df": df, "alt": alt}
         try:
-            exec(, {}, local_vars)
+            exec(refined_code, {}, local_vars)
             refined_chart = local_vars["chart"]
 
-            st.subheader("")
+            st.subheader("Refined Chart")
             #Display the refined chart
-            st.altair_chart(, use_container_width=True)
+            st.altair_chart(refined_chart, use_container_width=True)
 
         #Handle errors if chart execution or display fails
         except Exception as e:
-            st.error(f" {e}")
+            st.error(f"Failed to display refined chart: {e}")
