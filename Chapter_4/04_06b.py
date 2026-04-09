@@ -8,7 +8,8 @@ import os, pickle
 from openai import OpenAI
 import numpy as np
 import altair as alt
-
+import logging
+import traceback
 
 #Enable Altair VegaFusion data transformer for efficient chart rendering
 alt.data_transformers.enable("vegafusion")
@@ -24,10 +25,14 @@ client = OpenAI(api_key=my_api_key)
 st.set_page_config(page_title="Hotel Dashboard", layout="wide")
 
 #Write title
-st.title("")
+st.title("Interactive Hotel Dashboard")
 
 #Setup log file for dashboard events, feedback, and errors
-
+logging.basicConfig(
+    filename="dashboard_maintenance.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s"
+)
 
 #Check for cleaned dataset, stop if missing
 if not os.path.exists("cleaned_data_final.pkl"):
@@ -91,7 +96,7 @@ for col in selected_categorical:
     df = df[df[col].isin(sel_opts)]
 
 #Log applied filters
-
+logging.info(f"Filteres applied - Numeric: {selected_numeric}, Categorical: {selected_categorical}")
 
 #Check for existing saved dashboard layout
 if not os.path.exists("dashboard_layout.py"):
@@ -141,7 +146,7 @@ if not charts:
     #Display Streamlit warning message if no charts are loaded into the dashboard
     st.warning("No saved charts found. Please generate charts first.")
     #Log this warning event to the log file
-
+    logging.warning("No saved charts found when dashboard ran.")
     #Stop the app execution since there’s nothing to display
     st.stop()
 
@@ -150,14 +155,14 @@ try:
     #Execute the AI-generated dashboard layout code, injecting charts and Streamlit into its local namespace
     exec(dashboard_layout_code, {}, charts | {"st": st})
     #Log a success message if the dashboard layout executes without errors
-
+    logging.info("Dashboard layout successfully executed.")
 except Exception as e:
     #Display error message in the Streamlit UI if the layout execution fails
     st.error(f"Error running dashboard layout: {e}")
     #Log the error message to the log file
-
+    logging.error(f"Error executing dashboard layout: {e}")
     #Log the full traceback for debugging purposes
-
+    logging.error(traceback.format_exc())
 #Add AI Chabot section in sidebar
 st.sidebar.header("AI Assistant")
 #Determine if chat history exists in the session state and initialize if it doesn't
@@ -233,44 +238,49 @@ for msg in st.session_state.chat_history:
     else:
         st.sidebar.markdown(f"**Bot:** {msg['content']}")
 
-#Add feedback section in the sidebar for user input
 
+#Add feedback section in the sidebar for user input
+st.sidebar.header("Feedback")
 
 #Create thumbs-up feedback button
-
+if st.sidebar.button("👍 Dashboard looks great"):
     #Log positive feedback when user clicks thumbs-up
-
+    logging.info("User feedback: 👍 Dashboard looks great")
     #Display thank you message in sidebar
-
+    st.sidebar.success("Thank you for the positive feedback!")
 
 #Create thumbs-down feedback button
-
+if st.sidebar.button("👎 Needs improvement"):
     #Log negative feedback when user clicks thumbs-down
-
+    logging.info("User feedback: 👎 Needs improvement")
     #Display thank you message for constructive feedback
-
+    st.sidebar.info("Thanks, we'll review your feedback.")
 
 #Add text input for written feedback
-
+feedback=st.sidebar.text_area("Additional Comments")
 
 #Save written feedback when submitted
-
+if st.sidebar.button("Submit Feedback"):
     #If text area is empty, prompt the user to enter feedback
-
+    if not feedback.strip():
+        st.sidebar.warning("Please enter your feedback before submitting.")
+    else:
         #Log user’s written feedback to log file
-
+        logging.info(f"User written feedback: {feedback}")
         #Confirm feedback submission to user
-
+        st.sidebar.success("Thank you, your feedback has been logged.")
 
 #Read and display recent log entries for dashboard activity and feedback
-
+with st.expander("Recent Log Entries"):
 
     #Read last 10 lines of the dashboard maintenance log
-
+    if os.path.exists("dashboard_maintenance.log"):
         #Open the log file and read its contents
-
-            #Read only the last 10 lines for recent activity
-
+        with open("dashboard_maintenance.log") as f:
+        #Read only the last 10 lines for recent activity
+            lines = f.readlines()[-10:]
         #Display last 10 log lines in a Streamlit code block
-
+        st.code("".join(lines))
+    else:
         #If log file doesn't exist yet, notify user
+        st.write("No log entries found yet.")
